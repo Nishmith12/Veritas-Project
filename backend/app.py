@@ -1,48 +1,131 @@
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import sqlite3
+import requests
+from dotenv import load_dotenv
+from datetime import datetime
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
-# This enables Cross-Origin Resource Sharing, allowing your frontend to talk to this backend
 CORS(app)
 
-DATABASE_URL = 'veritas.db'
+# Get your Alchemy URL from the environment variable
+ALCHEMY_URL = os.getenv("ALCHEMY_URL")
 
-def get_db_connection():
-    """Creates a connection to the SQLite database."""
-    conn = sqlite3.connect(DATABASE_URL)
-    conn.row_factory = sqlite3.Row # This allows us to access columns by name
-    return conn
+def get_wallet_age_and_tx_count(address):
+    """Fetches the first transaction to estimate wallet age and total transactions."""
+    payload = {
+        "id": 1,
+        "jsonrpc": "2.0",
+        "method": "alchemy_getAssetTransfers",
+        "params": [
+            {
+                "fromBlock": "0x0",
+                "fromAddress": address,
+                "category": ["external", "internal", "erc20", "erc721", "erc1155"],
+                "maxCount": "0x1",
+                "order": "asc"
+            }
+        ]
+    }
+    headers = {"accept": "application/json", "content-type": "application/json"}
+    
+    first_tx_response = requests.post(ALCHEMY_URL, json=payload)
+    first_tx_data = first_tx_response.json()
 
-@app.route('/reviews/<int:product_id>', methods=['GET'])
-def get_reviews(product_id):
-    """Fetches all reviews for a specific product ID."""
-    conn = get_db_connection()
-    reviews = conn.execute('SELECT * FROM reviews WHERE product_id = ? ORDER BY timestamp DESC', (product_id,)).fetchall()
-    conn.close()
-    # Convert the list of Row objects to a list of dictionaries
-    return jsonify([dict(ix) for ix in reviews])
+    wallet_age_days = 0
+    # ====================================================================
+    # VVVV  THIS IS THE UPDATED LOGIC  VVVV
+    # ====================================================================
+    # We now check if 'transfers' exists AND if the first transfer has 'metadata'
+    if (first_tx_data.get('result') 
+        and first_tx_data['result'].get('transfers') 
+        and 'metadata' in first_tx_data['result']['transfers'][0]):
+        
+        first_tx_timestamp = int(first_tx_data['result']['transfers'][0]['metadata']['blockTimestamp'], 16)
+        age_seconds = datetime.now().timestamp() - first_tx_timestamp
+        wallet_age_days = age_seconds / (60 * 60 * 24)
+    # ====================================================================
 
-@app.route('/submit_review', methods=['POST'])
-def submit_review():
-    """Submits a new review."""
+    payload["method"] = "eth_getTransactionCount"
+    payload["params"] = [address, "latest"]
+    tx_count_response = requests.post(ALCHEMY_URL, json=payload)
+    tx_count_data = tx_count_response.json()
+    
+    tx_count = 0
+    if tx_count_data.get('result'):
+        tx_count = int(tx_count_data['result'], 16)
+        
+    return wallet_age_days, tx_count
+
+@app.route('/get_reputation_score/<string:address>', methods=['GET'])
+def get_reputation_score(address):
+    """Calculates a simple reputation score for a wallet address."""
+    if not ALCHEMY_URL:
+        return jsonify({"error": "Alchemy URL not configured"}), 500
+            
+    try:
+        wallet_age_days, tx_count = get_wallet_age_and_tx_count(address)
+        
+        score = (wallet_age_days * 0.5) + (tx_count * 1.0)
+        
+        return jsonify({
+            "address": address,
+            "score": round(score, 2),
+            "details": {
+                "wallet_age_days": round(wallet_age_days, 2),
+                "transaction_count": tx_count
+            }
+        })
+    except Exception as e:
+        # Improved error logging for us to see in the terminal
+        print(f"An error occurred: {e}") 
+        return jsonify({"error": "Could not process the request for this address."}), 500
+    
+# VVVV  ADD THIS NEW FUNCTION AND ENDPOINT  VVVV
+
+def analyze_review_text(text):
+    """
+    A very simple NLP model to detect fake reviews.
+    In a real project, this would be a trained machine learning model.
+    For our MVP, we will use a simple rule-based system.
+    """
+    score = 0
+
+    # Rule 1: Very short reviews are suspicious
+    if len(text) < 20:
+        score += 30
+
+    # Rule 2: Reviews with excessive exclamation points or all caps are suspicious
+    if text.count('!') > 3 or text.isupper():
+        score += 25
+
+    # Rule 3: Reviews with generic phrases are suspicious
+    generic_phrases = ["good product", "highly recommend", "great value", "will buy again"]
+    for phrase in generic_phrases:
+        if phrase in text.lower():
+            score += 15
+
+    # The final score is capped at 100
+    return min(score, 100)
+
+@app.route('/analyze_review', methods=['POST'])
+def analyze_review():
+    """Analyzes the text of a review to give it a 'fakeness' score."""
     data = request.get_json()
-    product_id = data.get('productId')
-    # For now, we'll just use a placeholder for the reviewer's address
-    reviewer_address = data.get('reviewerAddress', '0xPlaceholderUserAddress')
     review_text = data.get('reviewText')
 
-    if not product_id or not review_text:
-        return jsonify({'error': 'Missing data'}), 400
+    if not review_text:
+        return jsonify({"error": "reviewText is required"}), 400
 
-    conn = get_db_connection()
-    conn.execute('INSERT INTO reviews (product_id, reviewer_address, review_text) VALUES (?, ?, ?)',
-                 (product_id, reviewer_address, review_text))
-    conn.commit()
-    conn.close()
+    fakeness_score = analyze_review_text(review_text)
 
-    return jsonify({'message': 'Review submitted successfully!'}), 201
+    return jsonify({
+        "reviewText": review_text,
+        "fakenessScore": fakeness_score
+    })
 
 if __name__ == '__main__':
-    # The app will run on http://127.0.0.1:5000
     app.run(debug=True, port=5000)

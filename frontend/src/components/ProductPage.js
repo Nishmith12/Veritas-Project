@@ -1,10 +1,13 @@
-// src/components/ProductPage.js
+// ====================================================================
+// FILE: frontend/src/components/ProductPage.js
+// ====================================================================
+// The only change here is passing the user's address down to the form.
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import ReviewList from './ReviewList';
 import ReviewForm from './ReviewForm';
 
-// Import the contract address and ABI
 import { VERITAS_REVIEWS_ADDRESS } from '../config';
 import VeritasReviewsABI from '../contracts/VeritasReviews.json';
 
@@ -34,20 +37,20 @@ function ProductPage() {
   };
 
   const fetchReviews = useCallback(async () => {
-    // We can fetch reviews even without a connected wallet, so we use the provider
     if (!provider) return;
     try {
       const contract = new ethers.Contract(VERITAS_REVIEWS_ADDRESS, VeritasReviewsABI.abi, provider);
       const reviewData = await contract.getReviewsForProduct(MOCK_PRODUCT_ID);
-
-      // The contract returns an array of struct-like objects, we need to format them
+      
       const formattedReviews = reviewData.map(review => ({
         id: Number(review.id),
         reviewer: review.reviewer,
         reviewIpfsHash: review.reviewIpfsHash,
-        timestamp: new Date(Number(review.timestamp) * 1000).toLocaleString()
+        timestamp: new Date(Number(review.timestamp) * 1000).toLocaleString(),
+        reputationScore: Number(review.reputationScore),
+        fakenessScore: Number(review.fakenessScore)
       }));
-
+      
       setReviews(formattedReviews);
     } catch (error) {
       console.error("Failed to fetch reviews:", error);
@@ -55,13 +58,12 @@ function ProductPage() {
   }, [provider]);
 
   useEffect(() => {
-    // Create a default provider to fetch reviews on page load
     if(window.ethereum) {
         const defaultProvider = new ethers.BrowserProvider(window.ethereum);
         setProvider(defaultProvider);
     }
   }, []);
-
+  
   useEffect(() => {
     if(provider){
         fetchReviews();
@@ -81,8 +83,8 @@ function ProductPage() {
       <p>This is a conceptual product for our review system.</p>
       <hr />
       <h3>Submit Your Review</h3>
-      {/* We pass the signer down to the form for submitting transactions */}
-      <ReviewForm productId={MOCK_PRODUCT_ID} onReviewSubmitted={fetchReviews} signer={signer} />
+      {/* --- UPDATED LINE --- We now pass the userAddress down */}
+      <ReviewForm productId={MOCK_PRODUCT_ID} onReviewSubmitted={fetchReviews} signer={signer} userAddress={userAddress} />
       <hr />
       <h3>Reviews</h3>
       <ReviewList reviews={reviews} />

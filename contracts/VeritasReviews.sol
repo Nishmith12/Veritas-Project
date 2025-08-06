@@ -1,39 +1,45 @@
+// ====================================================================
+// FILE: contracts/VeritasReviews.sol
+// ====================================================================
+// We are adding the AI scores directly to the review struct.
+
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-// We need to import the ReceiptNFT contract to use its functions
 import "./ReceiptNFT.sol";
 
 contract VeritasReviews {
 
-    // A "struct" is a custom data type to organize our review data
     struct Review {
         uint id;
         address reviewer;
-        string reviewIpfsHash; // We only store a hash pointing to the review text
+        string reviewIpfsHash;
         uint timestamp;
+        // --- NEW FIELDS ---
+        uint reputationScore;
+        uint fakenessScore;
     }
 
-    // A variable to hold a reference to our deployed ReceiptNFT contract
     ReceiptNFT private _receiptNft;
-
-    // A mapping is like a hash table or dictionary.
-    // It will store all reviews, organized by a product ID.
     mapping(uint => Review[]) public reviewsByProductId;
     uint private _reviewCounter;
 
-    // The constructor runs only once when we deploy the contract.
-    // We must provide the address of our already-deployed ReceiptNFT contract.
     constructor(address receiptNftAddress) {
         _receiptNft = ReceiptNFT(receiptNftAddress);
     }
 
-    // This is the core function of our DApp
-    function addReview(uint productId, string memory reviewIpfsHash) public {
-        // This is the core decentralized logic of your project.
-        // It checks if the user's wallet address has a balance of more than 0 Receipt NFTs.
-        // If not, it stops execution and shows an error message.
+    // --- UPDATED FUNCTION ---
+    // We now accept the scores as arguments to store them on-chain.
+    function addReview(
+        uint productId,
+        string memory reviewIpfsHash,
+        uint reputationScore,
+        uint fakenessScore
+    ) public {
         require(_receiptNft.balanceOf(msg.sender) > 0, "Veritas: Must own a receipt NFT to post a review.");
+
+        // A simple on-chain check: if the fakeness score is too high, reject the review.
+        require(fakenessScore < 75, "Veritas: Review flagged as potential spam.");
 
         _reviewCounter++;
         reviewsByProductId[productId].push(
@@ -41,17 +47,14 @@ contract VeritasReviews {
                 id: _reviewCounter,
                 reviewer: msg.sender,
                 reviewIpfsHash: reviewIpfsHash,
-                timestamp: block.timestamp
+                timestamp: block.timestamp,
+                reputationScore: reputationScore,
+                fakenessScore: fakenessScore
             })
         );
     }
 
-    // ====================================================================
-    // VVVV  ADD THE NEW FUNCTION RIGHT HERE  VVVV
-    // ====================================================================
     function getReviewsForProduct(uint productId) public view returns (Review[] memory) {
         return reviewsByProductId[productId];
     }
-    // ====================================================================
-
-} // <-- This is the final closing brace of the contract.
+}
