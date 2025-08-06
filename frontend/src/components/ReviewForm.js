@@ -1,40 +1,52 @@
 // src/components/ReviewForm.js
 import React, { useState } from 'react';
+import { ethers } from 'ethers';
 
-function ReviewForm({ productId, onReviewSubmitted }) {
+// Import the contract address and ABI
+import { VERITAS_REVIEWS_ADDRESS } from '../config';
+import VeritasReviewsABI from '../contracts/VeritasReviews.json';
+
+
+function ReviewForm({ productId, onReviewSubmitted, signer }) {
   const [reviewText, setReviewText] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!signer) {
+      alert("Please connect your wallet first!");
+      return;
+    }
     if (!reviewText.trim()) {
       alert('Review cannot be empty!');
       return;
     }
 
-    try {
-      const response = await fetch('http://127.0.0.1:5000/submit_review', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          productId: productId,
-          reviewText: reviewText,
-          // We'll add the real user address in Phase 2
-          reviewerAddress: '0xAnonymous'
-        }),
-      });
+    // In a real app, you would upload the reviewText to IPFS and get a hash.
+    // For our MVP, we will use the text itself as a placeholder for the hash.
+    const reviewIpfsHash = reviewText;
 
-      if (response.ok) {
-        setReviewText('');
-        alert('Review submitted successfully!');
-        onReviewSubmitted(); // This tells the parent to refetch reviews
-      } else {
-        throw new Error('Failed to submit review');
-      }
+    setIsSubmitting(true);
+    try {
+      const contract = new ethers.Contract(VERITAS_REVIEWS_ADDRESS, VeritasReviewsABI.abi, signer);
+
+      console.log("Submitting review to the blockchain...");
+      // This line initiates the transaction and opens MetaMask
+      const tx = await contract.addReview(productId, reviewIpfsHash);
+
+      console.log("Waiting for transaction to be mined...");
+      // This line waits for the transaction to be confirmed on the blockchain
+      await tx.wait();
+
+      alert('Review submitted to the blockchain!');
+      onReviewSubmitted(); // This tells the parent to refetch reviews
+      setReviewText('');
+
     } catch (error) {
-      console.error(error);
-      alert('An error occurred while submitting your review.');
+      console.error("Blockchain transaction failed:", error);
+      alert("An error occurred. Do you own a Receipt NFT?");
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -48,7 +60,9 @@ function ReviewForm({ productId, onReviewSubmitted }) {
         cols="50"
       />
       <br />
-      <button type="submit">Submit Review</button>
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Submitting...' : 'Submit Review'}
+      </button>
     </form>
   );
 }
