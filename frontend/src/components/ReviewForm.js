@@ -11,8 +11,10 @@ function ReviewForm({ productId, onReviewSubmitted, signer, userAddress }) {
 
   const handleTextChange = async (text) => {
       setReviewText(text);
+      setAiScores(null); // Reset scores while typing
+      
+      // Simple debounce to avoid calling API on every keystroke
       if (text.length > 10) {
-          setAiScores(null);
           setTimeout(() => {
               if (text === document.querySelector('textarea').value) {
                   fetchAiScores(text);
@@ -62,31 +64,11 @@ function ReviewForm({ productId, onReviewSubmitted, signer, userAddress }) {
     const reviewIpfsHash = reviewText;
     
     setIsSubmitting(true);
-
-    // ====================================================================
-    // VVVV  NEW DEBUGGING LOGS  VVVV
-    // ====================================================================
-    console.log("--- DEBUGGING REPORT ---");
-    console.log("Timestamp:", new Date().toISOString());
-    console.log("User Address (from parent):", userAddress);
-    console.log("Signer Address (from ethers):", await signer.getAddress());
-    console.log("Review Contract Address (from config.js):", VERITAS_REVIEWS_ADDRESS);
-    console.log("--- AI SCORES ---");
-    console.log("Reputation Score:", aiScores.reputation);
-    console.log("Fakeness Score:", aiScores.fakeness);
-    console.log("--- TRANSACTION DATA ---");
-    console.log("Product ID:", productId);
-    console.log("Review Text (as hash):", reviewIpfsHash);
-    console.log("--------------------------");
-    // ====================================================================
-
     try {
       const contract = new ethers.Contract(VERITAS_REVIEWS_ADDRESS, VeritasReviewsABI.abi, signer);
-      
-      console.log("Attempting to send transaction...");
+
       const tx = await contract.addReview(productId, reviewIpfsHash, Math.round(aiScores.reputation), aiScores.fakeness);
       
-      console.log("Transaction sent, waiting for confirmation...");
       await tx.wait();
 
       alert('Review submitted to the blockchain!');
@@ -95,7 +77,7 @@ function ReviewForm({ productId, onReviewSubmitted, signer, userAddress }) {
       setAiScores(null);
 
     } catch (error) {
-      console.error("BLOCKCHAIN TRANSACTION FAILED:", error);
+      console.error("Blockchain transaction failed:", error);
       alert("An error occurred. Does your review meet the quality standards?");
     } finally {
         setIsSubmitting(false);
@@ -105,23 +87,21 @@ function ReviewForm({ productId, onReviewSubmitted, signer, userAddress }) {
   return (
     <div>
         <form onSubmit={handleSubmit}>
-        <textarea
-            value={reviewText}
-            onChange={(e) => handleTextChange(e.target.value)}
-            placeholder="Write your honest review here..."
-            rows="4"
-            cols="50"
-        />
-        <br />
-        <button type="submit" disabled={isSubmitting || !aiScores}>
-            {isSubmitting ? 'Submitting...' : 'Submit Review'}
-        </button>
+          <textarea
+              value={reviewText}
+              onChange={(e) => handleTextChange(e.target.value)}
+              placeholder="Write your honest review here..."
+              rows="5"
+          />
+          <button type="submit" disabled={isSubmitting || !aiScores}>
+              {isSubmitting ? 'Submitting...' : 'Submit Review'}
+          </button>
         </form>
         {aiScores && (
             <div className="ai-scores">
-                <p><strong>AI Analysis:</strong></p>
-                <p>Reviewer Reputation Score: {aiScores.reputation}</p>
-                <p>Review Fakeness Score: {aiScores.fakeness} / 100</p>
+                <p><strong>AI Analysis Ready</strong></p>
+                <p>✓ Reviewer Reputation Score: {aiScores.reputation}</p>
+                <p>✓ Review Fakeness Score: {aiScores.fakeness} / 100</p>
             </div>
         )}
     </div>

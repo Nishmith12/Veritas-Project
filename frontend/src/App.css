@@ -1,38 +1,190 @@
+/* --- Premium UI/UX Styles for Veritas --- */
+
+/* 1. Import a premium font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+
+/* 2. Define a modern color palette and root variables */
+:root {
+  --background-start: #1a1a2e;
+  --background-end: #16213e;
+  --card-background: rgba(27, 27, 46, 0.6);
+  --primary-text: #e0e0e0;
+  --secondary-text: #a9a9a9;
+  --accent-color: #00d8ff;
+  --accent-glow: rgba(0, 216, 255, 0.4);
+  --success-color: #28a745;
+  --success-glow: rgba(40, 167, 69, 0.4);
+  --border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 3. Add a subtle animated gradient background */
+@keyframes gradient-animation {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: linear-gradient(-45deg, var(--background-start), var(--background-end), #1a1a2e, #0f3460);
+  background-size: 400% 400%;
+  animation: gradient-animation 15s ease infinite;
+  color: var(--primary-text);
+}
+
+/* 4. Main App Container & Header */
 .App {
   text-align: center;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.App-header h1 {
+  margin: 0;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--accent-color);
+  text-shadow: 0 0 10px var(--accent-glow);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 2.5rem 0;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+/* 5. Glassmorphism Card Effect for all containers */
+.wallet-connector,
+.review-form-container,
+.review-card {
+  background: var(--card-background);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  padding: 1.5rem;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 6. Premium Button Styles with Glow Effect */
+button {
+  border: none;
+  border-radius: 8px;
+  padding: 12px 25px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+button:disabled {
+  background-color: #555;
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.5;
+}
+
+.wallet-connector button {
+  background-color: #007bff;
   color: white;
 }
-
-.App-link {
-  color: #61dafb;
+.wallet-connector button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px rgba(0, 123, 255, 0.5);
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.review-form-container button {
+  background-color: var(--success-color);
+  color: white;
+}
+.review-form-container button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px var(--success-glow);
+}
+
+
+/* 7. Polished Form Elements */
+.review-form-container {
+  margin-top: 1rem;
+}
+
+.review-form-container h3 {
+  margin-top: 0;
+}
+
+.review-form-container textarea {
+  width: 95%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: rgba(0, 0, 0, 0.2);
+  color: var(--primary-text);
+  font-family: 'Poppins', sans-serif;
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  resize: vertical;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.review-form-container textarea:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 15px var(--accent-glow);
+}
+
+/* 8. Polished AI Scores & Review List */
+.ai-scores {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  text-align: left;
+}
+
+.ai-scores p {
+  margin: 0.5rem 0;
+  color: var(--secondary-text);
+}
+.ai-scores strong {
+    color: var(--primary-text);
+}
+.ai-scores p:first-child strong {
+  color: var(--accent-color);
+}
+
+.review-list {
+  margin-top: 2rem;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.review-card p {
+  margin: 0.5rem 0;
+}
+
+.review-card strong {
+  color: var(--accent-color);
+}
+
+.review-scores {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  color: var(--secondary-text);
+  font-size: 0.9rem;
 }

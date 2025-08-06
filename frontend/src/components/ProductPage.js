@@ -1,8 +1,3 @@
-// ====================================================================
-// FILE: frontend/src/components/ProductPage.js
-// ====================================================================
-// The only change here is passing the user's address down to the form.
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import ReviewList from './ReviewList';
@@ -49,7 +44,7 @@ function ProductPage() {
         timestamp: new Date(Number(review.timestamp) * 1000).toLocaleString(),
         reputationScore: Number(review.reputationScore),
         fakenessScore: Number(review.fakenessScore)
-      }));
+      })).sort((a, b) => b.id - a.id); // Sort reviews to show newest first
       
       setReviews(formattedReviews);
     } catch (error) {
@@ -80,11 +75,12 @@ function ProductPage() {
         )}
       </div>
       <h2>The Book of Veritas</h2>
-      <p>This is a conceptual product for our review system.</p>
+      <p>A conceptual product for our decentralized AI-powered review system.</p>
       <hr />
-      <h3>Submit Your Review</h3>
-      {/* --- UPDATED LINE --- We now pass the userAddress down */}
-      <ReviewForm productId={MOCK_PRODUCT_ID} onReviewSubmitted={fetchReviews} signer={signer} userAddress={userAddress} />
+      <div className="review-form-container">
+        <h3>Submit Your Review</h3>
+        <ReviewForm productId={MOCK_PRODUCT_ID} onReviewSubmitted={fetchReviews} signer={signer} userAddress={userAddress} />
+      </div>
       <hr />
       <h3>Reviews</h3>
       <ReviewList reviews={reviews} />
