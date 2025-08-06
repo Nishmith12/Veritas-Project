@@ -35,18 +35,42 @@ function ProductPage() {
     if (!provider) return;
     try {
       const contract = new ethers.Contract(VERITAS_REVIEWS_ADDRESS, VeritasReviewsABI.abi, provider);
-      const reviewData = await contract.getReviewsForProduct(MOCK_PRODUCT_ID);
+      const reviewDataFromChain = await contract.getReviewsForProduct(MOCK_PRODUCT_ID);
       
-      const formattedReviews = reviewData.map(review => ({
-        id: Number(review.id),
-        reviewer: review.reviewer,
-        reviewIpfsHash: review.reviewIpfsHash,
-        timestamp: new Date(Number(review.timestamp) * 1000).toLocaleString(),
-        reputationScore: Number(review.reputationScore),
-        fakenessScore: Number(review.fakenessScore)
-      })).sort((a, b) => b.id - a.id); // Sort reviews to show newest first
+      const formattedReviews = await Promise.all(
+        reviewDataFromChain.map(async (review) => {
+          try {
+            // --- UPDATED IPFS GATEWAY URL ---
+            const response = await fetch(`https://gateway.pinata.cloud/ipfs/${review.reviewIpfsHash}`);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch from IPFS: ${response.statusText}`);
+            }
+            const reviewText = await response.text();
+            
+            return {
+              id: Number(review.id),
+              reviewer: review.reviewer,
+              reviewText: reviewText,
+              timestamp: new Date(Number(review.timestamp) * 1000).toLocaleString(),
+              reputationScore: Number(review.reputationScore),
+              fakenessScore: Number(review.fakenessScore)
+            };
+          } catch (e) {
+            console.error(`Could not fetch review for CID ${review.reviewIpfsHash}:`, e);
+            return {
+              id: Number(review.id),
+              reviewer: review.reviewer,
+              reviewText: "[Could not load review from IPFS]",
+              timestamp: new Date(Number(review.timestamp) * 1000).toLocaleString(),
+              reputationScore: Number(review.reputationScore),
+              fakenessScore: Number(review.fakenessScore)
+            };
+          }
+        })
+      );
       
-      setReviews(formattedReviews);
+      setReviews(formattedReviews.sort((a, b) => b.id - a.id));
+
     } catch (error) {
       console.error("Failed to fetch reviews:", error);
     }

@@ -1,8 +1,3 @@
-// ====================================================================
-// FILE: frontend/src/components/ReviewList.js
-// ====================================================================
-// We now display the AI scores that are stored on-chain with each review.
-
 import React from 'react';
 
 function ReviewList({ reviews }) {
@@ -15,9 +10,9 @@ function ReviewList({ reviews }) {
       {reviews.map((review) => (
         <div key={review.id} className="review-card">
           <p><strong>Reviewer:</strong> {review.reviewer}</p>
-          <p>{review.reviewIpfsHash}</p>
+          {/* This now displays the full text fetched from IPFS */}
+          <p>{review.reviewText}</p>
           <small>Posted on: {review.timestamp}</small>
-          {/* --- NEW UI --- */}
           <div className="review-scores">
             <small>Reputation Score: {review.reputationScore}</small> | 
             <small> Fakeness Score: {review.fakenessScore}</small>
